@@ -1,0 +1,6 @@
+{
+  "wp-content-dir": "/path/to/wp-content",
+  "media-output-dir": "/path/to/media",
+  "media-server-base": "http://media.server/base/path",
+  "shared-folder-name": "shared"
+}

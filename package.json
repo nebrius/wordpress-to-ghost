@@ -1,0 +1,18 @@
+{
+  "name": "wordpress-to-ghost",
+  "version": "0.1.0",
+  "description": "Takes the output of the Ghost Wordpress plugin and converts images and their links in posts to be Ghost Blog friendly",
+  "engine": "node >= 0.10.0",
+  "bin": "index.js",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "http://github.com/bryan-m-hughes/wordpress-to-ghost"
+  },
+  "keywords": [
+    "Ghost",
+    "Wordpress"
+  ],
+  "author": "Bryan Hughes <bryan@theoreticalideations.com>",
+  "license": "MIT"
+}
