@@ -1,11 +1,18 @@
-Wordpress to Ghost Image URL Converter
-================================
+Wordpress to Ghost Post Processor
+=================================
 
 This script takes the output from the [Ghost Wordpress Plugin](http://www.wordpress.org/plugins/ghost/) and updates the image URLs to point to a server of your choice. While the Ghost Wordpress plugin works great with other image providers, it's not so great for using your own server for serving media, which this server fixes
 
-To use:
-* Clone this repo to your local machine
-* Export your data using the Ghost Wordpress Plugin
-* Update ```config.json``` in the root directory of this script with your information
-* Run ```node index.js``` from the root directory of this script
-* Import the newly created file into your Ghost blog and enjoy!
+Install the post processor:
+
+```
+npm install wp2ghostpp
+```
+
+Run the post processor:
+
+```
+wp2ghostpp
+```
+
+The post processor will prompt you for the needed information. Alternately, you can supply a configuration file with the ```-f``` flag. See the example config file.
