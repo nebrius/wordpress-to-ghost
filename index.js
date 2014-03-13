@@ -56,14 +56,6 @@ function validateEntryURL(entryUrl) {
   return entryUrl;
 }
 
-// Validate the wp-content-dir
-validateEntryPath('wp-content-dir');
-var uploadsPath = path.join(config['wp-content-dir'], 'uploads');
-if (!fs.existsSync(uploadsPath)) {
-  console.error('The wp-content folder does not contain an "uploads" folder\n');
-  process.exit(1);
-}
-
 // Vaalidate the exported data path
 validateEntryPath('exported-data-path');
 
