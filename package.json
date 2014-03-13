@@ -1,7 +1,7 @@
 {
-  "name": "wordpress-to-ghost-url",
+  "name": "wordpress-to-ghost-postprocessor",
   "version": "0.1.0",
-  "description": "Takes the output of the Ghost Wordpress plugin and converts image links in posts to be Ghost Blog friendly",
+  "description": "Takes the output of the Ghost Wordpress plugin and performs various post-processing to be more Ghost Blog friendly",
   "engine": "node >= 0.10.0",
   "bin": "index.js",
   "main": "index.js",

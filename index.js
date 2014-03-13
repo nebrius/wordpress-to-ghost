@@ -27,7 +27,6 @@ var path = require('path');
 var url = require('url');
 var config = require('./config');
 
-
 function validateEntryPath(name) {
   if (!config.hasOwnProperty(name)) {
     console.error('Missing config entry ' + name + '\n');
@@ -47,7 +46,7 @@ function validateEntryURL(entryUrl) {
   entryUrl = config[entryUrl];
   var parsedURL = url.parse(entryUrl);
   if (!parsedURL.protocol || !parsedURL.host) {
-    console.error('Midding protocol or host in ' + entryUrl + '\n');
+    console.error('Missing protocol or host in ' + entryUrl + '\n');
     process.exit(1);
   }
   if (/\/$/.test(entryUrl)) { // Trim off trailing slashes
@@ -56,7 +55,7 @@ function validateEntryURL(entryUrl) {
   return entryUrl;
 }
 
-// Vaalidate the exported data path
+// Validate the exported data path
 validateEntryPath('exported-data-path');
 
 // Validate the export path
@@ -77,8 +76,10 @@ var newServerMediaUrl = validateEntryURL('new-server-media-url');
 var exportedData = require(config['exported-data-path']);
 
 var nonText = /[^a-zA-Z]/;
-function processText(linkCallback, options) {
+function processText(options) {
   options = options || {};
+  var linkCallback = options.linkCallback;
+  var deleteCallback = options.deleteCallback;
   exportedData.data.posts.forEach(function (post) {
     if (options.log == 'titles') {
       console.log('Parsing "' + post.title + '"');
@@ -97,11 +98,13 @@ function processText(linkCallback, options) {
       var len = text.length;
       var state = 'scanning';
       var linkStartIndex;
+      var captionStartIndex;
 
       while(i < len) {
         switch(state) {
         case 'scanning':
-          if (text[i++] == '<') {
+          if (text[i] == '<') {
+            i++;
             if (text[i] == 'a' && nonText.test(text[i + 1])) {
               changeState('anchorTag');
               i += 2;
@@ -109,6 +112,42 @@ function processText(linkCallback, options) {
             if (text.substring(i, i + 3) == 'img' && nonText.test(text[i + 3])) {
               changeState('imgTag');
               i += 4;
+            }
+          } else if (text[i] == '[') {
+            if (text.substring(i + 1, i + 8) == 'caption' && nonText.test(text[i + 8])) {
+              changeState('captionOpeningTag');
+              captionStartIndex = i;
+              i += 9;
+            } else if (text.substring(i + 1, i + 10) == '/caption]') {
+              changeState('scanning');
+              if (deleteCallback) {
+                deleteCallback({
+                  text: text,
+                  start: i,
+                  end: i + 10,
+                  post: post,
+                  source: source
+                });
+              }
+              i += 10;
+            } else {
+              i++;
+            }
+          } else {
+            i++;
+          }
+          break;
+        case 'captionOpeningTag':
+          if (text[i++] == ']') {
+            changeState('scanning');
+            if (deleteCallback) {
+              deleteCallback({
+                text: text,
+                start: captionStartIndex,
+                end: i,
+                post: post,
+                source: source
+              });
             }
           }
           break;
@@ -130,14 +169,16 @@ function processText(linkCallback, options) {
           break;
         case 'anchorHrefInner':
           if (text[i] == '"') {
-            linkCallback({
-              text: text,
-              start: linkStartIndex,
-              end: i,
-              type: 'a',
-              post: post,
-              source: source
-            });
+            if (linkCallback) {
+              linkCallback({
+                text: text,
+                start: linkStartIndex,
+                end: i,
+                type: 'a',
+                post: post,
+                source: source
+              });
+            }
             changeState('anchorTag');
           }
           i++;
@@ -160,14 +201,16 @@ function processText(linkCallback, options) {
           break;
         case 'imgSrcInner':
           if (text[i] == '"') {
-            linkCallback({
-              text: text,
-              start: linkStartIndex,
-              end: i,
-              type: 'img',
-              post: post,
-              source: source
-            });
+            if (linkCallback) {
+              linkCallback({
+                text: text,
+                start: linkStartIndex,
+                end: i,
+                type: 'img',
+                post: post,
+                source: source
+              });
+            }
             changeState('imgTag');
           }
           i++;
@@ -182,28 +225,33 @@ function processText(linkCallback, options) {
 
 // Build the list of image URLs
 var imageMap = {};
-processText(function (link) {
-  if (link.type == 'img') {
-    var href = link.text.substring(link.start, link.end);
-    var match = new RegExp('^' + oldServerUrl + '/wp-content/uploads(.*)$').exec(href);
-    if (match && !imageMap[href]) {
-      imageMap[href] = newServerMediaUrl + match[1];
-      console.log('  Found link to update: ' + href);
+processText({
+  linkCallback: function (link) {
+    if (link.type == 'img') {
+      var href = link.text.substring(link.start, link.end);
+      var match = new RegExp('^' + oldServerUrl + '/wp-content/uploads(.*)$').exec(href);
+      if (match && !imageMap[href]) {
+        imageMap[href] = newServerMediaUrl + match[1];
+        console.log('  Found link to update: ' + href);
+      }
     }
-  }
-}, { log: 'titles' });
+  },
+  log: 'titles'
+});
 
-// Determine the changes to make
-processText(function (link) {
-  var href = link.text.substring(link.start, link.end);
-  if (imageMap[href]) {
-    link.post.changes = link.post.changes || [];
-    link.post.changes.push({
-      start: link.start,
-      end: link.end,
-      source: link.source,
-      newText: imageMap[href]
-    });
+// Determine the href changes to make
+processText({
+  linkCallback: function (options) {
+    var href = options.text.substring(options.start, options.end);
+    if (imageMap[href]) {
+      options.post.changes = options.post.changes || [];
+      options.post.changes.push({
+        start: options.start,
+        end: options.end,
+        source: options.source,
+        newText: imageMap[href]
+      });
+    }
   }
 });
 
@@ -224,6 +272,33 @@ exportedData.data.posts.forEach(function (post) {
         textToChange.substring(change.end);
     }
     delete post.changes;
+  }
+});
+
+// Determine the captions to delete
+processText({
+  deleteCallback: function (options) {
+    var deletes = options.post.deletes = options.post.deletes || [];
+    deletes.push(options);
+  }
+});
+
+// Remove the image captions
+console.log('');
+exportedData.data.posts.forEach(function (post) {
+  // iterate backwards to avoid having to update indices with each iteration
+  if (post.deletes) {
+    var deletes = post.deletes;
+    var i = deletes.length - 1;
+    console.log('Deleting captions for post "' + post.title + '"');
+    for (; i >= 0; i--) {
+      var change = deletes[i];
+      var textToChange = post[change.source];
+      post[change.source] =
+        textToChange.substring(0, change.start) +
+        textToChange.substring(change.end);
+    }
+    delete post.deletes;
   }
 });
 
