@@ -98,6 +98,7 @@ function processText(options) {
       var len = text.length;
       var state = 'scanning';
       var linkStartIndex;
+      var imgClassStartIndex;
 
       var context = [];
       while (i < len) {
@@ -205,6 +206,10 @@ function processText(options) {
             if (text.substring(i, i + 3) == 'src') {
               changeState('imgSrcOuter');
               i += 3;
+            } else if (text.substring(i, i + 5) == 'class') {
+              changeState('imgClassOuter');
+              imgClassStartIndex = i;
+              i += 4;
             } else {
               if (text.substring(i, i + 2) == '/>') {
                 context.pop();
@@ -236,6 +241,25 @@ function processText(options) {
               changeState('imgTag');
             }
             i++;
+            break;
+          case 'imgClassOuter':
+            if (text[i++] == '"') {
+              changeState('imgClassInner');
+            }
+            break;
+          case 'imgClassInner':
+            if (text[i++] == '"') {
+              if (deleteCallback) {
+                deleteCallback({
+                  text: text,
+                  start: imgClassStartIndex,
+                  end: ++i,
+                  post: post,
+                  source: source
+                });
+              }
+              changeState('imgTag');
+            }
             break;
         }
       }
@@ -328,5 +352,3 @@ exportedData.data.posts.forEach(function (post) {
 console.log('\nWriting updated data to ' + config['output-path']);
 fs.writeFileSync(config['output-path'], JSON.stringify(exportedData, 0, '  '));
 console.log('Finished exporting data\n');
-
-console.log(exportedData.data.posts[30].markdown);
