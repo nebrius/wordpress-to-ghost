@@ -98,123 +98,145 @@ function processText(options) {
       var len = text.length;
       var state = 'scanning';
       var linkStartIndex;
-      var captionStartIndex;
 
-      while(i < len) {
-        switch(state) {
-        case 'scanning':
-          if (text[i] == '<') {
-            i++;
-            if (text[i] == 'a' && nonText.test(text[i + 1])) {
-              changeState('anchorTag');
-              i += 2;
-            }
-            if (text.substring(i, i + 3) == 'img' && nonText.test(text[i + 3])) {
-              changeState('imgTag');
-              i += 4;
-            }
-          } else if (text[i] == '[') {
-            if (text.substring(i + 1, i + 8) == 'caption' && nonText.test(text[i + 8])) {
-              changeState('captionOpeningTag');
-              captionStartIndex = i;
-              i += 9;
-            } else if (text.substring(i + 1, i + 10) == '/caption]') {
-              changeState('scanning');
-              if (deleteCallback) {
+      var context = [];
+      while (i < len) {
+        switch (state) {
+          case 'scanning':
+            if (text[i] == '<') {
+              i++;
+              if (text[i] == 'a' && nonText.test(text[i + 1])) {
+                changeState('anchorTag');
+                context.push('a');
+                i += 2;
+              }
+              if (text.substring(i, i + 3) == 'img' && nonText.test(text[i + 3])) {
+                changeState('imgTag');
+                context.push('img');
+                i += 4;
+              }
+              if (text.substring(i, i + 3) == '/a>') {
+                context.pop();
+                i += 3;
+              }
+              if (text.substring(i, i + 5) == '/img>') {
+                context.pop();
+                i += 5;
+              }
+            } else if (text[i] == '[') {
+              if (text.substring(i + 1, i + 8) == 'caption' && nonText.test(text[i + 8])) {
+                context.push('caption');
+                if (deleteCallback) {
+                  deleteCallback({
+                    text: text,
+                    start: i,
+                    end: i + 8,
+                    post: post,
+                    source: source
+                  });
+                }
+                i += 9;
+              } else if (text.substring(i + 1, i + 10) == '/caption]') {
+                changeState('scanning');
+                context.pop();
+                if (deleteCallback) {
+                  deleteCallback({
+                    text: text,
+                    start: i,
+                    end: i + 10,
+                    post: post,
+                    source: source
+                  });
+                }
+                i += 10;
+              } else {
+                i++;
+              }
+            } else {
+              if (context[context.length - 1] == 'caption' && deleteCallback) {
                 deleteCallback({
                   text: text,
                   start: i,
-                  end: i + 10,
+                  end: i + 1,
                   post: post,
                   source: source
                 });
               }
-              i += 10;
-            } else {
               i++;
             }
-          } else {
+            break;
+          case 'anchorTag':
+            if (text.substring(i, i + 4) == 'href') {
+              changeState('anchorHrefOuter');
+              i += 4;
+            } else {
+              if (text.substring(i, i + 2) == '/>') {
+                context.pop();
+                changeState('scanning');
+                i += 2;
+              } else if(text[i++] == '>') {
+                changeState('scanning');
+              }
+            }
+            break;
+          case 'anchorHrefOuter':
+            if (text[i++] == '"') {
+              linkStartIndex = i;
+              changeState('anchorHrefInner');
+            }
+            break;
+          case 'anchorHrefInner':
+            if (text[i] == '"') {
+              if (linkCallback) {
+                linkCallback({
+                  text: text,
+                  start: linkStartIndex,
+                  end: i,
+                  type: 'a',
+                  post: post,
+                  source: source
+                });
+              }
+              changeState('anchorTag');
+            }
             i++;
-          }
-          break;
-        case 'captionOpeningTag':
-          if (text[i++] == ']') {
-            changeState('scanning');
-            if (deleteCallback) {
-              deleteCallback({
-                text: text,
-                start: captionStartIndex,
-                end: i,
-                post: post,
-                source: source
-              });
+            break;
+          case 'imgTag':
+            if (text.substring(i, i + 3) == 'src') {
+              changeState('imgSrcOuter');
+              i += 3;
+            } else {
+              if (text.substring(i, i + 2) == '/>') {
+                context.pop();
+                changeState('scanning');
+                i += 2;
+              } else if(text[i++] == '>') {
+                changeState('scanning');
+              }
             }
-          }
-          break;
-        case 'anchorTag':
-          if (text.substring(i, i + 4) == 'href') {
-            changeState('anchorHrefOuter');
-            i += 4;
-          } else {
-            if (text[i++] == '>') {
-              changeState('scanning');
+            break;
+          case 'imgSrcOuter':
+            if (text[i++] == '"') {
+              linkStartIndex = i;
+              changeState('imgSrcInner');
             }
-          }
-          break;
-        case 'anchorHrefOuter':
-          if (text[i++] == '"') {
-            linkStartIndex = i;
-            changeState('anchorHrefInner');
-          }
-          break;
-        case 'anchorHrefInner':
-          if (text[i] == '"') {
-            if (linkCallback) {
-              linkCallback({
-                text: text,
-                start: linkStartIndex,
-                end: i,
-                type: 'a',
-                post: post,
-                source: source
-              });
+            break;
+          case 'imgSrcInner':
+            if (text[i] == '"') {
+              if (linkCallback) {
+                linkCallback({
+                  text: text,
+                  start: linkStartIndex,
+                  end: i,
+                  type: 'img',
+                  post: post,
+                  source: source
+                });
+              }
+              changeState('imgTag');
             }
-            changeState('anchorTag');
-          }
-          i++;
-          break;
-        case 'imgTag':
-          if (text.substring(i, i + 3) == 'src') {
-            changeState('imgSrcOuter');
-            i += 3;
-          } else {
-            if (text[i++] == '>') {
-              changeState('scanning');
-            }
-          }
-          break;
-        case 'imgSrcOuter':
-          if (text[i++] == '"') {
-            linkStartIndex = i;
-            changeState('imgSrcInner');
-          }
-          break;
-        case 'imgSrcInner':
-          if (text[i] == '"') {
-            if (linkCallback) {
-              linkCallback({
-                text: text,
-                start: linkStartIndex,
-                end: i,
-                type: 'img',
-                post: post,
-                source: source
-              });
-            }
-            changeState('imgTag');
-          }
-          i++;
-          break;
+            i++;
+            break;
         }
       }
     }
@@ -306,3 +328,5 @@ exportedData.data.posts.forEach(function (post) {
 console.log('\nWriting updated data to ' + config['output-path']);
 fs.writeFileSync(config['output-path'], JSON.stringify(exportedData, 0, '  '));
 console.log('Finished exporting data\n');
+
+console.log(exportedData.data.posts[30].markdown);
