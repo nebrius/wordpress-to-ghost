@@ -1,6 +1,6 @@
 {
   "name": "wp2ghostpp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Takes the output of the Ghost Wordpress plugin and performs various post-processing to be more Ghost Blog friendly",
   "engine": "node >= 0.10.0",
   "bin": "index.js",
