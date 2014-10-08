@@ -1,15 +1,15 @@
 {
   "name": "wp2ghostpp",
-  "version": "0.1.1",
+  "version": "1.0.0",
   "description": "Takes the output of the Ghost Wordpress plugin and performs various post-processing to be more Ghost Blog friendly",
   "engine": "node >= 0.10.0",
   "bin": "index.js",
   "main": "index.js",
   "repository": {
     "type": "git",
-    "url": "https://gitlab.theoreticalideations.com/nebrius/wordpress-to-ghost"
+    "url": "https://github.com/bryan-m-hughes/wordpress-to-ghost.git"
   },
-  "homepage": "https://gitlab.theoreticalideations.com/nebrius/wordpress-to-ghost",
+  "homepage": "https://github.com/bryan-m-hughes/wordpress-to-ghost",
   "keywords": [
     "Ghost",
     "Wordpress"
